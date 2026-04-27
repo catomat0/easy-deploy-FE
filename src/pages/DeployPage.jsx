@@ -424,6 +424,17 @@ export default function DeployPage() {
                 </div>
               )}
 
+              <div style={{
+                fontSize: '12px', color: '#64748b', lineHeight: '1.7',
+                background: '#0d1120', border: '1px solid #1e2535',
+                borderRadius: '8px', padding: '10px 14px',
+              }}>
+                <strong style={{ color: '#7c85a8' }}>💡 VPC란?</strong>{' '}
+                AWS 계정 내에 만들어진 <strong style={{ color: '#94a3b8' }}>가상 네트워크</strong>예요. EC2 인스턴스는 반드시 하나의 VPC 안에 위치해야 해요.
+                대부분의 경우 <strong style={{ color: '#94a3b8' }}>기본 VPC(Default VPC)</strong>를 그대로 사용하면 충분합니다.
+                특정 VPC·서브넷에 배포해야 하는 경우에만 선택하세요.
+              </div>
+
               {vpcs.length === 0 && !vpcLoading && (
                 <div style={{ fontSize: '12px', color: '#475569' }}>
                   자격증명 입력 후 "VPC 불러오기"를 클릭하세요. 건너뛰면 계정 기본 VPC를 사용합니다.
