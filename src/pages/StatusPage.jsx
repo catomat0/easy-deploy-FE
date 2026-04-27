@@ -334,9 +334,11 @@ export default function StatusPage() {
                 ⚠️ SSH 프라이빗 키를 지금 저장하세요!
               </p>
               <p style={styles.pemWarningDesc}>
-                이 키는 보안상 서버에 저장되지 않습니다.<br />
-                지금 다운로드하지 않으면 <strong>다시 받을 수 없으며</strong>, EC2에 직접 SSH 접속이 불가능해집니다.<br />
-                (GitHub Actions CD는 이미 설정 완료되어 배포는 정상 동작합니다.)
+                이 키는 보안상 서버에 저장되지 않으며, <strong>지금이 유일한 다운로드 기회</strong>입니다.<br />
+                <br />
+                <strong>꼭 저장해야 하는 이유</strong><br />
+                · <strong>서버 직접 접속 (SSH 인증)</strong> — EC2는 비밀번호 로그인이 기본 차단되어 있어, 이 .pem 키가 유일한 인증 수단입니다. 로그 확인·장애 대응·수동 작업 시 <code>ssh -i key.pem ubuntu@{'<'}서버IP{'>'}</code>로 접속합니다.<br />
+                · <strong>GitHub Actions CD 재설정</strong> — 현재 배포에는 SSH 키가 Secrets에 자동 등록되어 CD가 동작하지만, 레포를 새로 연결하거나 Secrets를 재설정할 때 이 키가 반드시 필요합니다.
               </p>
               <button
                 style={styles.pemDownloadBtn}

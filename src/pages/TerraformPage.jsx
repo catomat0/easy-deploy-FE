@@ -5,91 +5,102 @@ import TopBar from '../components/TopBar'
 
 const PHASES = [
   {
-    label: '배포 요청',
+    label: '로컬 개발',
     color: '#6366f1',
     bg: '#6366f110',
     steps: [
       {
         icon: '🧑‍💻',
-        title: '사용자 입력',
-        desc: 'AWS 자격증명 · GitHub URL · Token · .env.prod',
+        title: '코드 작성',
+        desc: '개발자가 로컬 환경에서 백엔드 코드 작성 (Spring Boot, Node.js 등)',
         outputs: [],
       },
       {
-        icon: '📡',
-        title: 'POST /deploy',
-        desc: 'DeployJob 생성(PENDING) — Job UUID 즉시 반환, 클라이언트 SSE 구독 시작',
-        outputs: ['Job UUID'],
+        icon: '🐳',
+        title: 'Dockerfile 작성',
+        desc: '앱을 Docker 이미지로 패키징하는 방법 정의. 빌드 → 실행 환경을 명세한 레시피',
+        outputs: ['Docker Image'],
+      },
+      {
+        icon: '📋',
+        title: 'docker-compose.yml 작성',
+        desc: '앱 · DB(MySQL) · 캐시(Redis) 등 여러 컨테이너를 한 번에 띄우는 구성 파일. 포트, 볼륨, 환경변수를 정의',
+        outputs: [],
       },
     ],
   },
   {
-    label: 'Terraform 인프라 프로비저닝',
+    label: 'EC2 서버 인프라',
     color: '#8b5cf6',
     bg: '#8b5cf610',
     steps: [
       {
-        icon: '🗂️',
-        title: 'terraform init',
-        desc: '워크스페이스 초기화, tfvars.json 파일 생성',
+        icon: '☁️',
+        title: 'EC2 인스턴스',
+        desc: 'AWS에서 제공하는 가상 서버. 앱이 실제로 실행되는 컴퓨터. 인스턴스 타입(t3.small 등)으로 사양 결정',
+        outputs: ['Public IP'],
+      },
+      {
+        icon: '🔒',
+        title: '보안 그룹 (Security Group)',
+        desc: 'EC2의 방화벽. 외부에서 접근 가능한 포트를 제어 — 22(SSH), 80(HTTP), 443(HTTPS), 8080(앱) 개방',
         outputs: [],
       },
       {
-        icon: '⚙️',
-        title: 'terraform apply',
-        desc: 'EC2 인스턴스 · EIP · 보안그룹(22/80/443/8080) · SSH 키쌍 생성 — 약 2~3분 소요',
-        outputs: [],
-      },
-      {
-        icon: '📤',
-        title: 'terraform output',
-        desc: 'AWS 리소스 생성 결과 수집',
-        outputs: ['instance_id', 'public_ip', 'ssh_private_key'],
+        icon: '🔄',
+        title: 'nginx (리버스 프록시)',
+        desc: '외부 요청(포트 80)을 받아 내부 앱(포트 8080)으로 전달. 도메인 연결·SSL 처리도 담당',
+        outputs: ['80 → 8080'],
       },
     ],
   },
   {
-    label: '앱 자동 실행',
+    label: '최초 배포',
     color: '#06b6d4',
     bg: '#06b6d410',
     steps: [
       {
-        icon: '🐳',
-        title: 'EC2 user_data 자동 실행',
-        desc: 'Docker 설치 → GitHub 레포 클론 → .env.prod 주입 → docker-compose up',
-        outputs: ['앱 기동'],
+        icon: '📦',
+        title: 'EC2에 Docker 설치',
+        desc: 'Docker · docker-compose 설치. 이후 모든 앱 실행은 Docker가 담당',
+        outputs: [],
+      },
+      {
+        icon: '📥',
+        title: 'GitHub 레포 클론',
+        desc: 'EC2 서버에서 git clone으로 소스코드 다운로드',
+        outputs: [],
+      },
+      {
+        icon: '▶️',
+        title: 'docker-compose up',
+        desc: 'docker-compose.yml을 읽어 컨테이너 빌드 후 실행. 앱 · DB · Redis가 한 번에 기동',
+        outputs: ['앱 서비스 시작'],
       },
     ],
   },
   {
-    label: 'CD 파이프라인 구성',
+    label: '지속적 배포 (CD)',
     color: '#10b981',
     bg: '#10b98110',
     steps: [
       {
-        icon: '🔧',
-        title: 'GitHub Actions 설정',
-        desc: '워크플로우 파일(.github/workflows/deploy.yml) 자동 생성 · EC2_HOST · SSH_KEY · ENV_PROD Secrets 자동 등록',
+        icon: '⬆️',
+        title: 'git push (main 브랜치)',
+        desc: '개발자가 새 코드를 GitHub main 브랜치에 push',
         outputs: [],
       },
       {
-        icon: '✅',
-        title: '배포 완료',
-        desc: 'DeployJob SUCCESS · Server 레코드 DB 저장 · SSE complete 이벤트로 IP·SSH Key 1회 전달 후 폐기',
-        outputs: ['Public IP', 'SSH Key (1회)'],
+        icon: '⚙️',
+        title: 'GitHub Actions 워크플로우 트리거',
+        desc: 'push 이벤트를 감지해 자동으로 워크플로우 실행. EC2_HOST · SSH_KEY · ENV_PROD 등 Secrets를 사용',
+        outputs: [],
       },
-    ],
-  },
-  {
-    label: '이후 자동 배포 (CD)',
-    color: '#f59e0b',
-    bg: '#f59e0b10',
-    steps: [
       {
-        icon: '🚀',
-        title: 'git push → GitHub Actions 트리거',
-        desc: 'main 브랜치 push 시 워크플로우 자동 실행 — EC2에 SSH 접속 후 docker-compose pull & up',
-        outputs: ['EC2 자동 재배포'],
+        icon: '🔗',
+        title: 'EC2 SSH 접속 → 재배포',
+        desc: 'GitHub Actions가 SSH로 EC2에 접속해 git pull → docker-compose up --build 실행. 새 코드가 자동 반영됨',
+        outputs: ['자동 재배포 완료'],
       },
     ],
   },
@@ -235,8 +246,23 @@ const wfStyles = {
 function DeployWorkflow() {
   return (
     <div style={wfStyles.section}>
-      <div style={wfStyles.sectionTitle}>배포 워크플로우</div>
-      <div style={wfStyles.sectionSub}>서버 생성 요청부터 CD 파이프라인 완성까지의 전체 흐름</div>
+      <div style={wfStyles.sectionTitle}>백엔드 서버 배포 흐름</div>
+      <div style={wfStyles.sectionSub}>코드 작성부터 EC2에서 앱이 실행되고 자동 재배포까지의 일반적인 흐름</div>
+
+      <div style={{
+        background: '#0d1120', border: '1px solid #6366f130',
+        borderRadius: '10px', padding: '14px 18px', marginBottom: '28px',
+        fontSize: '13px', color: '#94a3b8', lineHeight: '1.8',
+      }}>
+        <strong style={{ color: '#a5b4fc', display: 'block', marginBottom: '8px' }}>📌 EasyDeploy 지원 범위</strong>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div>✅ <strong style={{ color: '#e2e8f0' }}>단일 EC2 서버에 Docker로 앱 · DB · Redis를 함께 올리는 구성</strong>을 지원합니다. docker-compose.yml에 여러 서비스를 정의하면 한 번에 기동됩니다.</div>
+          <div>✅ <strong style={{ color: '#e2e8f0' }}>소스코드 기반 빌드</strong> — EC2에서 직접 <code style={{ background: '#1e2535', padding: '1px 5px', borderRadius: '3px', fontSize: '11px' }}>docker-compose up --build</code>로 이미지를 빌드해 실행합니다. Dockerfile이 레포 루트에 있어야 합니다.</div>
+          <div>✅ <strong style={{ color: '#e2e8f0' }}>Docker Hub 퍼블릭 이미지</strong> — docker-compose.yml에 <code style={{ background: '#1e2535', padding: '1px 5px', borderRadius: '3px', fontSize: '11px' }}>image: myuser/myapp</code>만 있는 경우, 퍼블릭 이미지라면 자동으로 pull해 실행됩니다.</div>
+          <div>❌ <strong style={{ color: '#f87171' }}>Docker Hub 프라이빗 이미지</strong> — docker login 설정이 자동으로 주입되지 않아 pull에 실패합니다.</div>
+          <div>❌ <strong style={{ color: '#f87171' }}>CI에서 이미지 빌드 후 Hub에 push하는 워크플로우</strong> — EasyDeploy가 생성하는 GitHub Actions는 EC2에서 직접 빌드하는 방식입니다. Hub에 push하는 단계는 별도로 직접 구성해야 합니다.</div>
+        </div>
+      </div>
 
       {PHASES.map((phase, pi) => (
         <div key={phase.label}>
