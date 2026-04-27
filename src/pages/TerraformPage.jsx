@@ -3,6 +3,300 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { getTerraformFiles } from '../api/deploy'
 import TopBar from '../components/TopBar'
 
+const PHASES = [
+  {
+    label: '배포 요청',
+    color: '#6366f1',
+    bg: '#6366f110',
+    steps: [
+      {
+        icon: '🧑‍💻',
+        title: '사용자 입력',
+        desc: 'AWS 자격증명 · GitHub URL · Token · .env.prod',
+        outputs: [],
+      },
+      {
+        icon: '📡',
+        title: 'POST /deploy',
+        desc: 'DeployJob 생성(PENDING) — Job UUID 즉시 반환, 클라이언트 SSE 구독 시작',
+        outputs: ['Job UUID'],
+      },
+    ],
+  },
+  {
+    label: 'Terraform 인프라 프로비저닝',
+    color: '#8b5cf6',
+    bg: '#8b5cf610',
+    steps: [
+      {
+        icon: '🗂️',
+        title: 'terraform init',
+        desc: '워크스페이스 초기화, tfvars.json 파일 생성',
+        outputs: [],
+      },
+      {
+        icon: '⚙️',
+        title: 'terraform apply',
+        desc: 'EC2 인스턴스 · EIP · 보안그룹(22/80/443/8080) · SSH 키쌍 생성 — 약 2~3분 소요',
+        outputs: [],
+      },
+      {
+        icon: '📤',
+        title: 'terraform output',
+        desc: 'AWS 리소스 생성 결과 수집',
+        outputs: ['instance_id', 'public_ip', 'ssh_private_key'],
+      },
+    ],
+  },
+  {
+    label: '앱 자동 실행',
+    color: '#06b6d4',
+    bg: '#06b6d410',
+    steps: [
+      {
+        icon: '🐳',
+        title: 'EC2 user_data 자동 실행',
+        desc: 'Docker 설치 → GitHub 레포 클론 → .env.prod 주입 → docker-compose up',
+        outputs: ['앱 기동'],
+      },
+    ],
+  },
+  {
+    label: 'CD 파이프라인 구성',
+    color: '#10b981',
+    bg: '#10b98110',
+    steps: [
+      {
+        icon: '🔧',
+        title: 'GitHub Actions 설정',
+        desc: '워크플로우 파일(.github/workflows/deploy.yml) 자동 생성 · EC2_HOST · SSH_KEY · ENV_PROD Secrets 자동 등록',
+        outputs: [],
+      },
+      {
+        icon: '✅',
+        title: '배포 완료',
+        desc: 'DeployJob SUCCESS · Server 레코드 DB 저장 · SSE complete 이벤트로 IP·SSH Key 1회 전달 후 폐기',
+        outputs: ['Public IP', 'SSH Key (1회)'],
+      },
+    ],
+  },
+  {
+    label: '이후 자동 배포 (CD)',
+    color: '#f59e0b',
+    bg: '#f59e0b10',
+    steps: [
+      {
+        icon: '🚀',
+        title: 'git push → GitHub Actions 트리거',
+        desc: 'main 브랜치 push 시 워크플로우 자동 실행 — EC2에 SSH 접속 후 docker-compose pull & up',
+        outputs: ['EC2 자동 재배포'],
+      },
+    ],
+  },
+]
+
+const wfStyles = {
+  section: {
+    marginTop: '56px',
+  },
+  sectionTitle: {
+    fontSize: '15px',
+    fontWeight: '700',
+    color: '#f1f5f9',
+    marginBottom: '4px',
+  },
+  sectionSub: {
+    fontSize: '13px',
+    color: '#475569',
+    marginBottom: '28px',
+  },
+  phase: {
+    marginBottom: '8px',
+  },
+  phaseHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '8px',
+  },
+  phaseDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    flexShrink: 0,
+  },
+  phaseLabel: {
+    fontSize: '11px',
+    fontWeight: '700',
+    letterSpacing: '0.8px',
+    textTransform: 'uppercase',
+  },
+  phaseLine: {
+    flex: 1,
+    height: '1px',
+    background: '#1e2535',
+  },
+  stepsWrap: {
+    paddingLeft: '16px',
+    borderLeft: '2px solid #1e2535',
+    marginLeft: '3px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0',
+  },
+  stepRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '0',
+    position: 'relative',
+  },
+  connectorWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    width: '28px',
+    flexShrink: 0,
+    paddingTop: '12px',
+  },
+  dot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    border: '2px solid',
+    background: '#0c0f1a',
+    flexShrink: 0,
+  },
+  arrow: {
+    width: '1px',
+    flex: 1,
+    minHeight: '20px',
+    background: 'linear-gradient(to bottom, #2d3148, #1e2535)',
+  },
+  arrowHead: {
+    fontSize: '9px',
+    color: '#2d3148',
+    lineHeight: 1,
+    marginTop: '-2px',
+  },
+  stepCard: {
+    flex: 1,
+    background: '#0f1117',
+    border: '1px solid #1e2535',
+    borderRadius: '10px',
+    padding: '12px 16px',
+    marginBottom: '8px',
+    marginTop: '6px',
+  },
+  stepTop: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '4px',
+  },
+  stepIcon: {
+    fontSize: '15px',
+    lineHeight: 1,
+  },
+  stepTitle: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#e2e8f0',
+  },
+  stepDesc: {
+    fontSize: '12px',
+    color: '#64748b',
+    lineHeight: '1.6',
+    marginLeft: '23px',
+  },
+  outputRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px',
+    marginTop: '8px',
+    marginLeft: '23px',
+  },
+  outputBadge: {
+    fontSize: '11px',
+    fontWeight: '600',
+    padding: '2px 8px',
+    borderRadius: '20px',
+    border: '1px solid',
+    fontFamily: 'ui-monospace, monospace',
+  },
+  phaseArrow: {
+    textAlign: 'center',
+    color: '#2d3148',
+    fontSize: '16px',
+    margin: '2px 0 2px 3px',
+    lineHeight: 1,
+  },
+}
+
+function DeployWorkflow() {
+  return (
+    <div style={wfStyles.section}>
+      <div style={wfStyles.sectionTitle}>배포 워크플로우</div>
+      <div style={wfStyles.sectionSub}>서버 생성 요청부터 CD 파이프라인 완성까지의 전체 흐름</div>
+
+      {PHASES.map((phase, pi) => (
+        <div key={phase.label}>
+          <div style={wfStyles.phase}>
+            <div style={wfStyles.phaseHeader}>
+              <div style={{ ...wfStyles.phaseDot, background: phase.color }} />
+              <span style={{ ...wfStyles.phaseLabel, color: phase.color }}>{phase.label}</span>
+              <div style={wfStyles.phaseLine} />
+            </div>
+
+            <div style={wfStyles.stepsWrap}>
+              {phase.steps.map((step, si) => (
+                <div key={step.title} style={wfStyles.stepRow}>
+                  <div style={wfStyles.connectorWrap}>
+                    <div style={{ ...wfStyles.dot, borderColor: phase.color }} />
+                    {(si < phase.steps.length - 1) && (
+                      <>
+                        <div style={wfStyles.arrow} />
+                        <div style={wfStyles.arrowHead}>▼</div>
+                      </>
+                    )}
+                  </div>
+                  <div style={{ ...wfStyles.stepCard, borderColor: phase.bg === '#6366f110' ? '#1e2535' : phase.bg.replace('10', '30') }}>
+                    <div style={wfStyles.stepTop}>
+                      <span style={wfStyles.stepIcon}>{step.icon}</span>
+                      <span style={{ ...wfStyles.stepTitle, color: phase.color === '#6366f1' ? '#a5b4fc' : phase.color === '#8b5cf6' ? '#c4b5fd' : phase.color === '#06b6d4' ? '#67e8f9' : phase.color === '#10b981' ? '#6ee7b7' : '#fde68a' }}>{step.title}</span>
+                    </div>
+                    <div style={wfStyles.stepDesc}>{step.desc}</div>
+                    {step.outputs.length > 0 && (
+                      <div style={wfStyles.outputRow}>
+                        {step.outputs.map(o => (
+                          <span
+                            key={o}
+                            style={{
+                              ...wfStyles.outputBadge,
+                              color: phase.color,
+                              borderColor: phase.color + '50',
+                              background: phase.bg,
+                            }}
+                          >
+                            {o}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {pi < PHASES.length - 1 && (
+            <div style={wfStyles.phaseArrow}>▼</div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const styles = {
   page: {
     maxWidth: '900px',
@@ -302,6 +596,8 @@ export default function TerraformPage() {
           {files[activeTab] && <FilePanel file={files[activeTab]} />}
         </>
       )}
+
+      <DeployWorkflow />
     </div>
   )
 }

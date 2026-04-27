@@ -216,48 +216,109 @@ export default function OnboardingPage() {
         </div>
       </div>
 
-      {/* Docker */}
+      {/* Repo prerequisites */}
       <div style={s.card}>
-        <div style={s.sectionTitle}>3단계 — 레포지토리 준비</div>
+        <div style={s.sectionTitle}>3단계 — 레포지토리 필수 파일 확인</div>
+
+        <div style={{ ...s.stepDesc, marginBottom: '20px', color: '#94a3b8' }}>
+          EasyDeploy는 <strong style={{ color: '#e2e8f0' }}>Docker Compose</strong> 기반으로 앱을 실행합니다.
+          배포 전 레포지토리 루트에 아래 파일들이 있는지 확인하세요.
+        </div>
+
+        <code style={{ ...s.code, marginBottom: '24px' }}>{`your-repo/
+├── Dockerfile          ← 이미지 빌드 방법 정의
+├── docker-compose.yml  ← 컨테이너 실행 구성 (필수)
+└── src/  ...`}</code>
+
         <div style={s.step}>
           <div style={s.stepNum}>1</div>
           <div style={s.stepBody}>
-            <div style={s.stepLabel}>Dockerfile 및 docker-compose.yml 확인</div>
+            <div style={s.stepLabel}>Dockerfile</div>
             <div style={s.stepDesc}>
-              CD 파이프라인은 Docker Compose 기반으로 동작합니다.<br />
-              레포지토리 루트에 두 파일이 있어야 자동 배포가 정상 작동합니다.
+              앱을 Docker 이미지로 만드는 빌드 스크립트입니다. EC2 위에서 이 파일을 읽어 이미지를 빌드합니다.
             </div>
-            <code style={s.code}>{`your-repo/
-├── Dockerfile
-├── docker-compose.yml   ← 필수
-├── src/
-└── ...`}</code>
+            <code style={s.code}>{`# Spring Boot 예시
+FROM eclipse-temurin:17-jdk AS build
+WORKDIR /app
+COPY . .
+RUN ./gradlew bootJar -x test
+
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+COPY --from=build /app/build/libs/*.jar app.jar
+ENTRYPOINT ["java", "-jar", "app.jar"]`}</code>
           </div>
         </div>
+
         <div style={s.step}>
           <div style={s.stepNum}>2</div>
           <div style={s.stepBody}>
-            <div style={s.stepLabel}>.env.prod 내용 준비</div>
+            <div style={s.stepLabel}>docker-compose.yml</div>
             <div style={s.stepDesc}>
-              프로덕션에서 사용할 환경변수를 미리 준비해두세요.<br />
-              배포 폼에서 직접 입력하면 EC2 서버에 자동으로 주입됩니다.
+              CD 파이프라인이 <span style={s.inlineCode}>docker-compose up -d</span>로 앱을 실행합니다.
+              포트는 EC2 보안그룹에서 개방되는 <strong style={{ color: '#e2e8f0' }}>8080</strong>에 맞춰주세요.
+              nginx가 80 → 8080 으로 리버스 프록시를 자동 처리합니다.
             </div>
-            <code style={s.code}>{`DATABASE_URL=mysql://user:pass@host:3306/db
-PORT=8080
-JWT_SECRET=your-secret
-...`}</code>
+            <code style={s.code}>{`services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"    ← 호스트:컨테이너 포트 일치
+    env_file:
+      - .env.prod      ← 환경변수 파일 (배포 시 자동 생성)`}</code>
+            <div style={s.tip}>
+              💡 <strong>.env.prod</strong>는 레포에 넣지 않아도 됩니다. 배포 폼에서 입력한 내용이 EC2에 자동으로 생성됩니다.
+            </div>
+            <div style={{
+              marginTop: '12px', background: '#0d1120', border: '1px solid #6366f130',
+              borderRadius: '8px', padding: '14px 16px', fontSize: '13px', color: '#94a3b8', lineHeight: '1.7',
+            }}>
+              <strong style={{ color: '#a5b4fc', display: 'block', marginBottom: '6px' }}>📦 단일 서버 vs AWS 관리형 서비스</strong>
+              EasyDeploy의 기본 방식은 <strong style={{ color: '#e2e8f0' }}>EC2 한 대에 앱 · DB · Redis를 모두 Docker로 올리는 구성</strong>입니다.
+              간단하고 비용이 적지만, 서버가 재시작되면 데이터가 날아갈 수 있고 트래픽이 늘면 병목이 생깁니다.<br /><br />
+              실무에서는 DB와 캐시를 별도 AWS 서비스로 분리하는 경우가 많습니다.
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <span style={{ color: '#6366f1', fontWeight: '700', flexShrink: 0 }}>RDS</span>
+                  <span>MySQL · PostgreSQL 등을 AWS가 직접 관리. 자동 백업, 페일오버 지원. docker-compose에서 DB 컨테이너 대신 RDS 엔드포인트를 <code style={{ background: '#1e2535', padding: '1px 5px', borderRadius: '3px', fontSize: '11px', color: '#a5b4fc' }}>DB_URL</code> 환경변수로 연결합니다.</span>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <span style={{ color: '#06b6d4', fontWeight: '700', flexShrink: 0 }}>ElastiCache</span>
+                  <span>Redis를 AWS가 관리. docker-compose에서 Redis 컨테이너 대신 ElastiCache 엔드포인트를 <code style={{ background: '#1e2535', padding: '1px 5px', borderRadius: '3px', fontSize: '11px', color: '#a5b4fc' }}>REDIS_URL</code>로 연결합니다.</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+
         <div style={s.step}>
           <div style={s.stepNum}>3</div>
           <div style={s.stepBody}>
-            <div style={s.stepLabel}>인스턴스 사양 안내</div>
+            <div style={s.stepLabel}>.env.prod 내용 준비</div>
             <div style={s.stepDesc}>
-              EasyDeploy는 기본적으로 <strong style={{ color: '#e2e8f0' }}>t3.small (메모리 2GB)</strong> 인스턴스로 생성합니다.<br />
-              Docker 이미지 빌드가 EC2에서 직접 수행되므로 최소 2GB 이상을 권장합니다.
+              프로덕션 환경변수를 배포 폼에서 직접 입력하면 EC2에 자동 주입됩니다.
+              아래 형식으로 미리 정리해두세요.
+            </div>
+            <code style={s.code}>{`DB_URL=jdbc:mysql://host:3306/dbname
+DB_USERNAME=user
+DB_PASSWORD=pass
+JWT_SECRET=your-secret
+PORT=8080`}</code>
+            <div style={s.warn}>
+              ⚠️ .env.prod를 레포에 커밋하지 마세요. .gitignore에 추가해두는 것을 권장합니다.
+            </div>
+          </div>
+        </div>
+
+        <div style={s.step}>
+          <div style={s.stepNum}>4</div>
+          <div style={s.stepBody}>
+            <div style={s.stepLabel}>인스턴스 사양</div>
+            <div style={s.stepDesc}>
+              Docker 이미지 빌드가 EC2에서 직접 수행됩니다. 기본값은 <strong style={{ color: '#e2e8f0' }}>t3.small (2GB)</strong>이며, 배포 폼에서 변경 가능합니다.
             </div>
             <div style={s.warn}>
-              ⚠️ t3.micro (1GB)는 Spring Boot 빌드 중 메모리 부족으로 실패할 수 있습니다. 배포 폼에서 인스턴스 타입을 직접 선택할 수 있습니다.
+              ⚠️ t3.micro (1GB)는 Spring Boot 빌드 중 메모리 부족(OOM)으로 서버가 멈추거나 배포가 실패할 수 있습니다. Redis나 DB를 함께 올린다면 t3.medium (4GB) 이상을 권장합니다. 배포 폼에서 직접 선택할 수 있습니다.
             </div>
           </div>
         </div>
