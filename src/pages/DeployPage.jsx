@@ -23,7 +23,6 @@ const INSTANCE_TYPES = [
   { value: 't3.small',  label: 't3.small  — 2GB  ✅ 앱 단독 권장 (기본값)' },
   { value: 't3.medium', label: 't3.medium — 4GB  ✅ Redis + DB 함께 올릴 때 권장' },
   { value: 't3.large',  label: 't3.large  — 8GB  ✅ 고사양 필요 시' },
-  { value: 't2.micro',  label: 't2.micro  — 1GB  ⚠️ 앱 단독도 빌드 중 OOM 위험' },
 ]
 
 const STORAGE_SIZES = [
