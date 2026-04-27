@@ -10,6 +10,7 @@ const INITIAL_FORM = {
   awsRegion: 'ap-northeast-2',
   instanceType: 't3.small',
   storageSize: 20,
+  serverName: '',
   vpcId: '',
   subnetId: '',
   githubRepoUrl: '',
@@ -323,6 +324,14 @@ export default function DeployPage() {
         <div style={styles.card}>
           <div style={styles.sectionTitle}>AWS 설정</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <FormField
+              label="서버 이름"
+              name="serverName"
+              placeholder="my-api-server"
+              hint="AWS 콘솔에 표시될 EC2 인스턴스 이름. 영문·숫자·하이픈 권장 (선택 — 비우면 자동 생성)"
+              value={form.serverName}
+              onChange={handleChange}
+            />
             <div style={styles.grid}>
               <FormField label="Access Key ID" name="awsAccessKeyId" placeholder="AKIA..." required value={form.awsAccessKeyId} onChange={handleChange} error={fieldErrors.awsAccessKeyId} />
               <FormField label="Secret Access Key" name="awsSecretAccessKey" type="password" placeholder="••••••••" required value={form.awsSecretAccessKey} onChange={handleChange} error={fieldErrors.awsSecretAccessKey} />
